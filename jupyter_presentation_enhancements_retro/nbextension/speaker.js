@@ -1,6 +1,21 @@
 /**
  * presentation_enhancements_retro — speaker notes stored in cell metadata.
  *
+ * DO NOT RENAME THIS FILE TO notes.js (or anything ending in "notes.js").
+ * -----------------------------------------------------------------------
+ * Reveal's own notes plugin finds its popup window's HTML by sniffing the
+ * document for a script tag:
+ *
+ *     document.querySelector('script[src*="notes.js"]').src
+ *         .replace(/notes\.js(\?.*)?$/, '') + 'notes.html'
+ *
+ * `querySelector` returns the *first* match in document order. RequireJS
+ * loads this nbextension at page load, long before RISE loads reveal's
+ * plugins, so a file named notes.js here wins that lookup — reveal then
+ * resolves notes.html against *our* directory and the speaker window 404s.
+ * (RISE also ships a notes.js.patched using `src$=`, ends-with, which a
+ * name ending in notes.js would still match.) Hence: speaker.js.
+ *
  * Why this exists
  * ---------------
  * RISE's native speaker notes are ordinary cells tagged `slide_type: notes`.

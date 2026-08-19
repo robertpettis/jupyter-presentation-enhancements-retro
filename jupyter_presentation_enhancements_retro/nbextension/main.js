@@ -8,6 +8,10 @@
  *
  * Features so far:
  *   notes — speaker notes stored in cell metadata rather than in visible cells.
+ *           Lives in speaker.js, NOT notes.js: reveal's notes plugin locates
+ *           its popup by grabbing the first `script[src*="notes.js"]` in the
+ *           document, and ours would load first and hijack it. See the header
+ *           of speaker.js.
  */
 define([
   'require',
@@ -15,7 +19,7 @@ define([
   'base/js/namespace',
   'base/js/events',
   './util',
-  './notes'
+  './speaker'
 ], function (require, $, Jupyter, events, util, notes) {
   'use strict';
 

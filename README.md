@@ -93,6 +93,27 @@ pip uninstall jupyter-presentation-enhancements-retro
 - RISE 5.7.x for the slideshow half; the notes pane works without it
 - A reasonably modern browser (Chrome/Edge current versions)
 
+## Development note: never name a file `notes.js`
+
+The notes module lives in `speaker.js`, and must not be renamed to anything
+containing — or ending in — `notes.js`.
+
+Reveal's own notes plugin finds the HTML for its popup window by sniffing the
+document for a script tag:
+
+```js
+document.querySelector('script[src*="notes.js"]').src
+    .replace(/notes\.js(\?.*)?$/, '') + 'notes.html'
+```
+
+`querySelector` returns the *first* match in document order. RequireJS loads
+this nbextension at page load, long before RISE loads reveal's plugins, so a
+file named `notes.js` here wins that lookup — reveal then resolves
+`notes.html` against *our* directory and the speaker window 404s with
+`/nbextensions/presentation_enhancements_retro/notes.html`. (RISE also ships a
+`notes.js.patched` variant using `src$=`, ends-with, which a name merely
+*ending* in `notes.js` would still match.)
+
 ## Interoperability
 
 - **`jupyter-cell-enhancements-retro`** — composes cleanly. The notes pane is
