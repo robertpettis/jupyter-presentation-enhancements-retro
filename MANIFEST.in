@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include jupyter_presentation_enhancements_retro/nbextension *
+recursive-include jupyter-config *

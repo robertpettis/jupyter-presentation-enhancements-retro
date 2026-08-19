@@ -1,0 +1,164 @@
+/* presentation_enhancements_retro
+ *
+ * The notes pane is absolutely positioned in a reserved strip to the right of
+ * the notebook container rather than being made a child column of `.cell`.
+ * That matters: the sibling cell-enhancements extension turns `.cell` into a
+ * flex row for its side-by-side input/output, and a competing `display` on the
+ * same element would have the two extensions fighting over the layout. Taking
+ * the pane out of flow entirely means the two compose instead.
+ */
+
+:root {
+  --pre-notes-width: 320px;
+}
+
+/* ---- Reserved gutter ------------------------------------------------------ */
+
+body.pre-notes-on #notebook-container {
+  padding-right: calc(var(--pre-notes-width) + 28px);
+}
+
+/* Anchor for the absolutely-positioned pane. Classic cells are static. */
+body.pre-notes-on .cell {
+  position: relative;
+}
+
+/* ---- The pane -------------------------------------------------------------- */
+
+.pre-notes-pane {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 14px;
+  width: var(--pre-notes-width);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border: 1px solid #d7d7e0;
+  border-left: 3px solid #7b7bb5;
+  border-radius: 4px;
+  background: #fbfbfe;
+}
+
+.pre-notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-bottom: 1px solid #e6e6ef;
+  background: #f0f0f7;
+  border-radius: 2px 2px 0 0;
+}
+
+.pre-notes-title {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5a5a8a;
+}
+
+.pre-notes-del {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 15px;
+  line-height: 1;
+  color: #9a9ab5;
+}
+
+.pre-notes-del:hover {
+  color: #a00000;
+}
+
+.pre-notes-text {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 68px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0 0 2px 2px;
+  padding: 6px 8px;
+  resize: vertical;
+  background: transparent;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #2b2b3a;
+}
+
+.pre-notes-text:focus {
+  outline: none;
+  background: #fff;
+}
+
+.pre-notes-text::placeholder {
+  color: #a8a8c0;
+  font-style: italic;
+}
+
+/* ---- Hover affordance for cells with no notes yet -------------------------- */
+
+.pre-notes-add {
+  position: absolute;
+  top: 2px;
+  left: 100%;
+  margin-left: 14px;
+  border: 1px dashed #c8c8da;
+  border-radius: 3px;
+  background: transparent;
+  color: #a8a8c0;
+  cursor: pointer;
+  padding: 1px 8px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.cell:hover > .pre-notes-add,
+.pre-notes-add:focus {
+  opacity: 1;
+}
+
+.pre-notes-add:hover {
+  border-color: #7b7bb5;
+  color: #5a5a8a;
+  background: #f4f4fb;
+}
+
+/* ---- Slideshow ------------------------------------------------------------- *
+ * reveal.css already hides `aside.notes`; these rules only style the merged
+ * aside's contents for the speaker window, which copies its innerHTML.
+ */
+
+.pre-note-item + .pre-note-item {
+  margin-top: 0.9em;
+  padding-top: 0.9em;
+  border-top: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.pre-note-item > :first-child {
+  margin-top: 0;
+}
+
+.pre-note-item > :last-child {
+  margin-bottom: 0;
+}
+
+/* Never let the editing chrome leak into a slide if a cell carrying a pane is
+ * moved into the reveal DOM before we can reconcile. */
+.reveal .pre-notes-pane,
+.reveal .pre-notes-add {
+  display: none !important;
+}
+
+/* ---- Menu ------------------------------------------------------------------ */
+
+.pre-menu-check {
+  width: 1em;
+  visibility: hidden;
+}
