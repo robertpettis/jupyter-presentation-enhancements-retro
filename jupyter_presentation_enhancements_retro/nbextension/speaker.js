@@ -44,8 +44,9 @@ define([
   'jquery',
   'base/js/namespace',
   'base/js/dialog',
-  './util'
-], function ($, Jupyter, dialog, util) {
+  './util',
+  './slidechrome'
+], function ($, Jupyter, dialog, util, slideChrome) {
   'use strict';
 
   var META_KEY = 'presentation_notes';
@@ -369,10 +370,13 @@ define([
         // original must stay where RISE put it. Cloning also preserves code
         // cells' rendered outputs, which a source-text copy would lose.
         var clone = el.cloneNode(true);
-        // Strip our own editing chrome, or it would be copied verbatim into
-        // the speaker window (CSS can't help — the popup only gets innerHTML).
+        // Strip editing chrome — ours and the siblings' — or it is copied
+        // verbatim into the speaker window. CSS cannot help here: the popup
+        // receives raw innerHTML and none of our stylesheets.
         Array.prototype.forEach.call(
-          clone.querySelectorAll('.pre-notes-pane, .pre-notes-add'),
+          clone.querySelectorAll(
+            '.pre-notes-pane, .pre-notes-add, ' +
+            slideChrome.clonedChromeSelectors()),
           function (node) { node.parentNode.removeChild(node); }
         );
         html = '<div class="pre-note-item pre-note-legacy">' +

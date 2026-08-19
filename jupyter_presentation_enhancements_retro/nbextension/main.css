@@ -156,6 +156,19 @@ body.pre-notes-on .cell {
   display: none !important;
 }
 
+/* ---- Sibling-extension chrome hidden during the slideshow ------------------
+ * Gated by body classes from chrome.js. Scoping under `.reveal` is what makes
+ * these self-reverting: RISE moves the live cells in on start and back out on
+ * exit, so the rules stop applying by themselves. Do not rewrite them to key
+ * off `body.rise-enabled` — that would leave the chrome hidden in the notebook
+ * if RISE ever failed to clean up its body class.
+ *
+ * .cee-title-header is jupyter-cell-enhancements-retro's per-cell title bar.
+ */
+body.pre-hide-cell-titles .reveal .cee-title-header {
+  display: none !important;
+}
+
 /* ---- Menu ------------------------------------------------------------------ */
 
 .pre-menu-check {

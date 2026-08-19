@@ -19,8 +19,9 @@ define([
   'base/js/namespace',
   'base/js/events',
   './util',
-  './speaker'
-], function (require, $, Jupyter, events, util, notes) {
+  './speaker',
+  './slidechrome'
+], function (require, $, Jupyter, events, util, notes, slideChrome) {
   'use strict';
 
   function loadCss() {
@@ -93,6 +94,10 @@ define([
     menu.append($('<li/>', { 'class': 'divider' }));
     menu.append(menuItem('Edit Notes for Selected Cell', notes.editSelected));
     menu.append(menuItem('Clear Notes for Selected Cell', notes.clearSelected));
+    menu.append($('<li/>', { 'class': 'divider' }));
+    slideChrome.menuItems().forEach(function (item) {
+      menu.append(checkItem(item.label, item.isOn, item.toggle));
+    });
     menu.append($('<li/>', { 'class': 'divider' }));
     menu.append(menuItem('Import: Notes Cells → Metadata…', notes.importNotesCells));
     menu.append(menuItem('Export: Metadata → Notes Cells…', notes.exportNotesCells));
@@ -179,6 +184,7 @@ define([
 
   function init() {
     loadCss();
+    slideChrome.load();
     notes.load();
     addToolbarButtons();
     addMenu();

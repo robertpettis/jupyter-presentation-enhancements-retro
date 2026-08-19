@@ -93,6 +93,22 @@ pip uninstall jupyter-presentation-enhancements-retro
 - RISE 5.7.x for the slideshow half; the notes pane works without it
 - A reasonably modern browser (Chrome/Edge current versions)
 
+### Hiding editing chrome during a slideshow
+
+*Slides+ ▸ **Hide Cell Titles During Slideshow*** (on by default) suppresses
+`jupyter-cell-enhancements-retro`'s per-cell title bars once RISE takes over,
+and brings them straight back when you leave the slideshow.
+
+The mechanism is pure CSS. RISE *moves* the live `.cell` elements into
+`.reveal .slides` and hands them back on exit, so a rule scoped under
+`.reveal` applies for exactly the duration of the slideshow and reverts on its
+own — there is no enter/leave hook to misfire and no saved state to restore.
+Cell titles are also stripped from legacy notes cells cloned into the speaker
+window, where CSS cannot reach because the popup only receives raw `innerHTML`.
+
+Adding another target is one entry in `TARGETS` in `slidechrome.js` plus the
+matching rule in `main.css`; the Slides+ checkbox is generated from it.
+
 ## Development note: never name a file `notes.js`
 
 The notes module lives in `speaker.js`, and must not be renamed to anything
