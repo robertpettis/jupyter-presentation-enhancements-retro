@@ -1,6 +1,6 @@
 """RISE presentation enhancements for classic Notebook 6."""
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 def _jupyter_nbextension_paths():

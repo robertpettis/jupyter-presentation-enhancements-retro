@@ -111,34 +111,55 @@ define(['base/js/mathjaxutils'], function (mathjaxutils) {
     }
 
     var previousRenderer = 'HTML-CSS';
-    var switched = false;
 
     try {
       MathJax.Hub.Queue(function () {
-        try {
-          var settings = MathJax.Hub.config && MathJax.Hub.config.menuSettings;
-          previousRenderer = (settings && settings.renderer) || 'HTML-CSS';
-          // Must be set before the SVG jax loads, or the glyph cache wins.
-          MathJax.Hub.Config({ SVG: { useFontCache: false } });
-          MathJax.Hub.setRenderer('SVG');
-          switched = true;
-        } catch (err) {
-          console.warn('[presentation_enhancements_retro] SVG renderer unavailable', err);
-        }
+        var settings = MathJax.Hub.config && MathJax.Hub.config.menuSettings;
+        previousRenderer = (settings && settings.renderer) || 'HTML-CSS';
+        // Must be set before the SVG jax loads, or the glyph cache wins and
+        // the output is <use> references that dangle inside the popup.
+        MathJax.Hub.Config({ SVG: { useFontCache: false } });
+        // Safety net: drop any error spans a previous pass may have stranded,
+        // so a transient MathJax hiccup cannot persist into a live talk.
+        elements.forEach(function (el) {
+          Array.prototype.forEach.call(
+            el.querySelectorAll('.MathJax_Error'),
+            function (node) { node.parentNode.removeChild(node); }
+          );
+        });
       });
+
+      /*
+       * Load the SVG output jax *before* switching, and switch as a queued
+       * Hub call rather than a bare invocation.
+       *
+       * This is load-bearing. nbclassic configures only HTML-CSS, so the
+       * first setRenderer('SVG') finds no SVG jax, registers a placeholder
+       * with `isUnknown: true`, blanks menuSettings.renderer, and returns an
+       * Ajax.Require callback meaning "wait for the real jax". Calling it
+       * bare and discarding that callback lets the next Typeset run against
+       * the placeholder — which renders [Math Processing Error], and then the
+       * late-arriving real renderer re-renders correctly *alongside* the
+       * stranded error span. Queueing both steps makes MathJax wait.
+       */
+      MathJax.Hub.Queue(['Require', MathJax.Ajax, '[MathJax]/jax/output/SVG/config.js']);
+      MathJax.Hub.Queue(['setRenderer', MathJax.Hub, 'SVG']);
 
       elements.forEach(function (el) {
         MathJax.Hub.Queue(['Typeset', MathJax.Hub, el]);
       });
 
+      // Returning the call's result lets the queue wait on it too, in case
+      // restoring the previous renderer also needs a load.
       MathJax.Hub.Queue(function () {
         try {
-          if (switched) {
-            MathJax.Hub.setRenderer(previousRenderer);
-          }
+          return MathJax.Hub.setRenderer(previousRenderer);
         } catch (err) {
           console.warn('[presentation_enhancements_retro] renderer restore failed', err);
         }
+      });
+
+      MathJax.Hub.Queue(function () {
         restoreStyles();
         finish();
       });
