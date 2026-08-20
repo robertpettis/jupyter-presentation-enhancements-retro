@@ -95,6 +95,12 @@ define([
     menu.append(menuItem('Edit Notes for Selected Cell', notes.editSelected));
     menu.append(menuItem('Clear Notes for Selected Cell', notes.clearSelected));
     menu.append($('<li/>', { 'class': 'divider' }));
+    menu.append(menuItem('Run All Code Notes', notes.runAllNotes));
+    menu.append(
+      checkItem('Auto-Run Code Notes During Slideshow',
+        notes.autoRunEnabled, notes.toggleAutoRun)
+    );
+    menu.append($('<li/>', { 'class': 'divider' }));
     slideChrome.menuItems().forEach(function (item) {
       menu.append(checkItem(item.label, item.isOn, item.toggle));
     });

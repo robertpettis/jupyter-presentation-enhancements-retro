@@ -45,12 +45,28 @@ define([
   'base/js/namespace',
   'base/js/dialog',
   './util',
-  './slidechrome'
-], function ($, Jupyter, dialog, util, slideChrome) {
+  './slidechrome',
+  './exec'
+], function ($, Jupyter, dialog, util, slideChrome, exec) {
   'use strict';
 
   var META_KEY = 'presentation_notes';
+  var TYPE_KEY = 'presentation_notes_type';
   var DEFAULT_WIDTH = 320;
+
+  /* Mirrors classic Notebook's own cell-type dropdown, minus the deprecated
+   * "Heading" entry (which is only an alias for markdown with a leading #). */
+  var TYPES = [
+    { value: 'code', label: 'Code' },
+    { value: 'markdown', label: 'Markdown' },
+    { value: 'raw', label: 'Raw NBConvert' }
+  ];
+
+  /* Output HTML from the last run of each note, for this browser session only.
+   * Deliberately NOT persisted to metadata: stale saved output is worse than
+   * no output, and it would bloat the .ipynb. Keyed by the cell object, so
+   * entries vanish with the cells they belong to. */
+  var outputs = new WeakMap();
 
   /* ---- Metadata accessors -------------------------------------------------- */
 
@@ -76,6 +92,82 @@ define([
 
   function hasNotes(cell) {
     return getNotes(cell).trim() !== '';
+  }
+
+  /** Note type, defaulting to markdown when unset so 0.1.x notes still work. */
+  function getType(cell) {
+    var value = cell && cell.metadata && cell.metadata[TYPE_KEY];
+    return value === 'code' || value === 'raw' ? value : 'markdown';
+  }
+
+  function setType(cell, type) {
+    if (!cell || !cell.metadata) {
+      return;
+    }
+    if (type === 'code' || type === 'raw') {
+      cell.metadata[TYPE_KEY] = type;
+    } else {
+      // markdown is the default; don't write the key for it.
+      delete cell.metadata[TYPE_KEY];
+    }
+    util.markDirty();
+  }
+
+  /* ---- Running code notes --------------------------------------------------- */
+
+  /**
+   * Run one cell's code note, caching the output HTML for the session.
+   * `done(ok)` is optional. Non-code notes complete immediately as a no-op.
+   */
+  function runNote(cell, done) {
+    if (getType(cell) !== 'code' || !hasNotes(cell)) {
+      if (done) { done(true); }
+      return;
+    }
+    outputs.set(cell, { html: '', ok: true, running: true });
+    paintPaneOutput(cell);
+    exec.run(getNotes(cell), function (html, ok) {
+      outputs.set(cell, { html: html, ok: ok, running: false });
+      paintPaneOutput(cell);
+      if (done) { done(ok); }
+    });
+  }
+
+  /** Every cell carrying a code note, in notebook order. */
+  function codeNoteCells() {
+    if (!Jupyter.notebook) {
+      return [];
+    }
+    return Jupyter.notebook.get_cells().filter(function (cell) {
+      return getType(cell) === 'code' &&
+        hasNotes(cell) &&
+        util.slideType(cell) !== 'skip';
+    });
+  }
+
+  /** Run every code note in the notebook, then report. */
+  function runAllNotes() {
+    var targets = codeNoteCells();
+    if (!targets.length) {
+      dialog.modal({
+        title: 'Run code notes',
+        body: 'No cells carry a code note.',
+        buttons: { OK: {} }
+      });
+      return;
+    }
+    var remaining = targets.length;
+    var failed = 0;
+    targets.forEach(function (cell) {
+      runNote(cell, function (ok) {
+        if (!ok) { failed += 1; }
+        remaining -= 1;
+        if (remaining === 0) {
+          console.log('[presentation_enhancements_retro] ran ' + targets.length +
+            ' code note(s), ' + failed + ' with errors');
+        }
+      });
+    });
   }
 
   /* ---- Preferences --------------------------------------------------------- */
@@ -143,8 +235,36 @@ define([
 
       var title = document.createElement('span');
       title.className = 'pre-notes-title';
-      title.textContent = 'Speaker notes';
+      title.textContent = 'Notes';
       head.appendChild(title);
+
+      var picker = document.createElement('select');
+      picker.className = 'pre-notes-type';
+      picker.title = 'How this note is treated — same choices as a real cell';
+      TYPES.forEach(function (type) {
+        var option = document.createElement('option');
+        option.value = type.value;
+        option.textContent = type.label;
+        picker.appendChild(option);
+      });
+      picker.addEventListener('change', function () {
+        setType(cell, picker.value);
+        // A type change invalidates any output from the previous type.
+        outputs.delete(cell);
+        refreshAll();
+      });
+      head.appendChild(picker);
+
+      var runBtn = document.createElement('button');
+      runBtn.className = 'pre-notes-run';
+      runBtn.type = 'button';
+      runBtn.title = 'Run this note in the kernel';
+      runBtn.textContent = '▶';
+      runBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        runNote(cell);
+      });
+      head.appendChild(runBtn);
 
       var del = document.createElement('button');
       del.className = 'pre-notes-del';
@@ -180,6 +300,10 @@ define([
       });
       pane.appendChild(textarea);
 
+      var out = document.createElement('div');
+      out.className = 'pre-notes-out';
+      pane.appendChild(out);
+
       el.appendChild(pane);
     }
 
@@ -193,6 +317,40 @@ define([
         field.value = text;
       }
     }
+
+    var type = getType(cell);
+    var picker = pane.querySelector('.pre-notes-type');
+    if (picker && picker.value !== type) {
+      picker.value = type;
+    }
+    // Code is the only type there is anything to run.
+    pane.classList.toggle('pre-notes-is-code', type === 'code');
+    if (field) {
+      field.classList.toggle('pre-notes-mono', type !== 'markdown');
+    }
+    paintPaneOutput(cell);
+  }
+
+  /** Reflect the cached run state of a code note into its pane. */
+  function paintPaneOutput(cell) {
+    var el = cell.element && cell.element[0];
+    var out = el && el.querySelector(':scope > .pre-notes-pane .pre-notes-out');
+    if (!out) {
+      return;
+    }
+    var state = outputs.get(cell);
+    if (getType(cell) !== 'code' || !state) {
+      out.innerHTML = '';
+      out.classList.remove('pre-notes-out-error');
+      return;
+    }
+    if (state.running) {
+      out.innerHTML = '<div class="pre-notes-running">running…</div>';
+      out.classList.remove('pre-notes-out-error');
+      return;
+    }
+    out.innerHTML = state.html;
+    out.classList.toggle('pre-notes-out-error', !state.ok);
   }
 
   function removePane(cell) {
@@ -323,6 +481,52 @@ define([
 
   var INJECTED_CLASS = 'pre-notes-aside';
 
+  /**
+   * One note as HTML for the speaker window.
+   *
+   * The popup receives raw innerHTML and loads none of our stylesheets, so
+   * anything that must look a particular way is styled inline here rather
+   * than in main.css.
+   */
+  function renderNote(cell) {
+    var text = getNotes(cell);
+    if (!text.trim()) {
+      return '';
+    }
+    var type = getType(cell);
+
+    if (type === 'markdown') {
+      return '<div class="pre-note-item">' + util.renderMarkdown(text) + '</div>';
+    }
+
+    if (type === 'raw') {
+      return '<div class="pre-note-item"><pre style="white-space:pre-wrap;">' +
+        util.escapeHtml(text) + '</pre></div>';
+    }
+
+    // Code: the source, then whatever the last run produced.
+    var parts = ['<div class="pre-note-item">'];
+    parts.push(
+      '<pre style="white-space:pre-wrap;margin:0 0 0.4em 0;' +
+      'border-left:3px solid #7b7bb5;padding-left:0.6em;"><code>' +
+      util.escapeHtml(text) + '</code></pre>'
+    );
+    var state = outputs.get(cell);
+    if (state && state.running) {
+      parts.push('<div style="opacity:0.6;font-style:italic;">running…</div>');
+    } else if (state && state.html) {
+      parts.push(
+        '<div style="border-left:3px solid ' +
+        (state.ok ? '#2e7d32' : '#a00000') + ';padding-left:0.6em;">' +
+        state.html + '</div>'
+      );
+    } else if (!state) {
+      parts.push('<div style="opacity:0.5;font-style:italic;">not run</div>');
+    }
+    parts.push('</div>');
+    return parts.join('');
+  }
+
   function removeInjected() {
     var stale = document.querySelectorAll('aside.' + INJECTED_CLASS);
     Array.prototype.forEach.call(stale, function (node) {
@@ -358,13 +562,13 @@ define([
         return;
       }
 
-      var type = util.slideType(cell);
-      if (type === 'skip') {
+      var slideKind = util.slideType(cell);
+      if (slideKind === 'skip') {
         return;
       }
 
       var html = '';
-      if (type === 'notes') {
+      if (slideKind === 'notes') {
         // Legacy notes cell. Clone rather than move: RISE hands these exact
         // elements back to the notebook when the slideshow exits, so the
         // original must stay where RISE put it. Cloning also preserves code
@@ -382,11 +586,7 @@ define([
         html = '<div class="pre-note-item pre-note-legacy">' +
           clone.innerHTML + '</div>';
       } else {
-        var text = getNotes(cell);
-        if (text.trim()) {
-          html = '<div class="pre-note-item">' +
-            util.renderMarkdown(text) + '</div>';
-        }
+        html = renderNote(cell);
       }
 
       if (!html) {
@@ -409,6 +609,60 @@ define([
       // Prepend: the plugin takes the *first* aside.notes it finds, so ours
       // must precede any legacy asides we have already absorbed.
       section.insertBefore(aside, section.firstChild);
+    });
+  }
+
+  function autoRunEnabled() {
+    return util.getSetting('autoRunCodeNotes', true) !== false;
+  }
+
+  function toggleAutoRun() {
+    util.setSetting('autoRunCodeNotes', !autoRunEnabled());
+  }
+
+  /**
+   * Run any not-yet-run code notes belonging to the slide now on screen, then
+   * rebuild the asides and push the result to the speaker window.
+   *
+   * Notes run at most once per slideshow session (the `outputs` cache is the
+   * record of that), so flipping back and forth through a deck does not
+   * re-execute anything — which matters when a note has side effects on the
+   * kernel your slides share.
+   */
+  function runNotesOnCurrentSlide() {
+    if (!autoRunEnabled() || !window.Reveal ||
+        typeof window.Reveal.getCurrentSlide !== 'function') {
+      return;
+    }
+    var section = window.Reveal.getCurrentSlide();
+    if (!section) {
+      return;
+    }
+
+    var pending = codeNoteCells().filter(function (cell) {
+      if (outputs.has(cell)) {
+        return false;
+      }
+      var el = cell.element && cell.element[0];
+      return el && el.closest('section') === section;
+    });
+    if (!pending.length) {
+      return;
+    }
+
+    var remaining = pending.length;
+    pending.forEach(function (cell) {
+      runNote(cell, function () {
+        remaining -= 1;
+        if (remaining === 0) {
+          // Rebuild the asides with the fresh output, then make reveal's
+          // notes plugin re-send the current slide to the popup — otherwise
+          // the speaker window keeps showing the pre-execution snapshot it
+          // grabbed on slidechanged.
+          injectAll();
+          exec.refreshSpeakerWindow();
+        }
+      });
     });
   }
 
@@ -439,7 +693,9 @@ define([
           // idempotent because injectAll() clears its own output first.
           if (typeof window.Reveal.addEventListener === 'function') {
             window.Reveal.addEventListener('ready', injectAll);
+            window.Reveal.addEventListener('slidechanged', runNotesOnCurrentSlide);
           }
+          runNotesOnCurrentSlide();
         } else if (tries > 100) {
           stopPolling();
           console.warn('[presentation_enhancements_retro] Reveal never appeared');
@@ -661,6 +917,9 @@ define([
     paneEnabled: paneEnabled,
     togglePane: togglePane,
     promptForWidth: promptForWidth,
+    autoRunEnabled: autoRunEnabled,
+    toggleAutoRun: toggleAutoRun,
+    runAllNotes: runAllNotes,
     editSelected: editSelected,
     clearSelected: clearSelected,
     importNotesCells: importNotesCells,

@@ -41,6 +41,43 @@ only while RISE is actually running:
 text is still in the `.ipynb` file. Anyone who opens the raw JSON can read it.
 This is about not showing your script to the room, not about secrecy.
 
+### Note types, including code that actually runs
+
+Each note has a type, chosen from a dropdown in the pane header that mirrors
+the notebook's own cell-type selector:
+
+| Type | In the speaker window |
+|---|---|
+| **Markdown** (default) | rendered markdown |
+| **Raw** | verbatim, unprocessed |
+| **Code** | the source, followed by its output — **executed in the notebook's kernel** |
+
+A code note runs for real. Press ▶ in the pane while authoring, or
+*Slides+ ▸ Run All Code Notes* before you present. During a slideshow,
+*Auto-Run Code Notes During Slideshow* (on by default) runs a slide's code
+notes the first time you reach that slide, then pushes the results into the
+speaker window.
+
+Output is rendered through classic Notebook's own `OutputArea`, so text,
+HTML, tables and matplotlib plots all come through — plots arrive as `data:`
+URIs and survive the copy into the popup. Two things do not: MathJax (the
+popup loads none, so LaTeX shows as source) and syntax colouring (the popup
+gets raw `innerHTML` and none of our stylesheets, so code is plain monospace).
+
+**Three things to know before you rely on this:**
+
+- It is the **same kernel as your slides**. A code note can mutate state your
+  demo depends on. Notes run at most **once per slideshow session** — flipping
+  back and forth does not re-execute — but the first run is real.
+- Notes execute with `store_history: false`, so they never consume `In[N]`
+  numbers or land in kernel history.
+- Output is **not saved** to the notebook. It is cached in memory for the
+  session only — stale saved output would be worse than none, and it would
+  bloat the `.ipynb`. A code note you have not run shows *not run*.
+
+If you would rather nothing execute while you are on stage, turn off
+*Auto-Run Code Notes During Slideshow* and use *Run All Code Notes* beforehand.
+
 #### Migrating an existing deck
 
 *Slides+ ▸ Import: Notes Cells → Metadata…* moves each markdown notes cell into

@@ -59,6 +59,39 @@ body.pre-notes-on .cell {
   color: #5a5a8a;
 }
 
+.pre-notes-type {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  margin-right: 4px;
+  font-size: 10px;
+  padding: 0 2px;
+  border: 1px solid #d7d7e0;
+  border-radius: 3px;
+  background: #fff;
+  color: #5a5a8a;
+}
+
+.pre-notes-run {
+  display: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: #2e7d32;
+}
+
+/* Only a code note has anything to run. */
+.pre-notes-pane.pre-notes-is-code .pre-notes-run {
+  display: inline-block;
+}
+
+.pre-notes-run:hover {
+  color: #1b5e20;
+}
+
 .pre-notes-del {
   border: none;
   background: none;
@@ -97,6 +130,52 @@ body.pre-notes-on .cell {
 .pre-notes-text::placeholder {
   color: #a8a8c0;
   font-style: italic;
+}
+
+/* Code and raw notes are whitespace-significant; markdown is prose. */
+.pre-notes-text.pre-notes-mono {
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ---- Run output inside the pane -------------------------------------------- */
+
+.pre-notes-out:empty {
+  display: none;
+}
+
+.pre-notes-out {
+  border-top: 1px solid #e6e6ef;
+  padding: 4px 8px;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 11px;
+  background: #fff;
+}
+
+.pre-notes-out.pre-notes-out-error {
+  background: #fdf3f3;
+}
+
+.pre-notes-out img {
+  max-width: 100%;
+  height: auto;
+}
+
+.pre-notes-out pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+}
+
+.pre-notes-running {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.pre-note-error {
+  color: #a00000;
 }
 
 /* ---- Hover affordance for cells with no notes yet -------------------------- */
