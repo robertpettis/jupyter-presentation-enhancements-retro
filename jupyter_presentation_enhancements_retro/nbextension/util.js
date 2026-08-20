@@ -6,7 +6,11 @@
  * cell-enhancements extension does. Anything that belongs *to the deck*
  * goes in notebook/cell metadata instead, so it travels with the .ipynb.
  */
-define(['base/js/namespace', 'base/js/events'], function (Jupyter, events) {
+define([
+  'base/js/namespace',
+  'base/js/events',
+  './math'
+], function (Jupyter, events, math) {
   'use strict';
 
   var STORE_PREFIX = 'presentation_enhancements_retro:';
@@ -104,7 +108,30 @@ define(['base/js/namespace', 'base/js/events'], function (Jupyter, events) {
     highlight: null
   };
 
+  /**
+   * Render markdown to HTML.
+   *
+   * Returns { html, hasMath }. LaTeX is lifted out before marked sees it and
+   * put back afterwards — otherwise underscores and asterisks inside `$...$`
+   * are read as markdown emphasis and the maths is corrupted before anything
+   * can typeset it. `hasMath` lets the caller skip the typesetting pass
+   * entirely when there is nothing to typeset; it comes from what was
+   * actually extracted, so prose containing a bare `$40` does not trigger it.
+   */
   function renderMarkdown(text) {
+    if (!text) {
+      return { html: '', hasMath: false };
+    }
+    var parts = math.protect(text);
+    var source = parts[0];
+    var extracted = parts[1] || [];
+    return {
+      html: math.restore(renderMarkdownRaw(source), extracted),
+      hasMath: extracted.length > 0
+    };
+  }
+
+  function renderMarkdownRaw(text) {
     if (!text) {
       return '';
     }

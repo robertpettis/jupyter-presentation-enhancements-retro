@@ -46,8 +46,9 @@ define([
   'base/js/dialog',
   './util',
   './slidechrome',
-  './exec'
-], function ($, Jupyter, dialog, util, slideChrome, exec) {
+  './exec',
+  './math'
+], function ($, Jupyter, dialog, util, slideChrome, exec, math) {
   'use strict';
 
   var META_KEY = 'presentation_notes';
@@ -481,6 +482,10 @@ define([
 
   var INJECTED_CLASS = 'pre-notes-aside';
 
+  /* Set by renderNote() while injectAll() is building, so we only pay for a
+   * MathJax pass when a note actually contains maths. */
+  var sectionNeedsTypeset = false;
+
   /**
    * One note as HTML for the speaker window.
    *
@@ -496,7 +501,11 @@ define([
     var type = getType(cell);
 
     if (type === 'markdown') {
-      return '<div class="pre-note-item">' + util.renderMarkdown(text) + '</div>';
+      var rendered = util.renderMarkdown(text);
+      if (rendered.hasMath) {
+        sectionNeedsTypeset = true;
+      }
+      return '<div class="pre-note-item">' + rendered.html + '</div>';
     }
 
     if (type === 'raw') {
@@ -547,6 +556,7 @@ define([
 
     removeInjected();
 
+    sectionNeedsTypeset = false;
     var order = [];
     var bySection = new Map();
 
@@ -600,6 +610,7 @@ define([
       bySection.get(section).push(html);
     });
 
+    var created = [];
     order.forEach(function (section) {
       var aside = document.createElement('aside');
       // 'notes' is what the reveal plugin looks for; the second class is ours
@@ -609,7 +620,18 @@ define([
       // Prepend: the plugin takes the *first* aside.notes it finds, so ours
       // must precede any legacy asides we have already absorbed.
       section.insertBefore(aside, section.firstChild);
+      created.push(aside);
     });
+
+    // Typesetting is async, so the asides briefly hold raw $...$ — which is
+    // exactly what the speaker window would have grabbed on slidechanged.
+    // Push a refresh once MathJax is done, the same way a finished code note
+    // does.
+    if (sectionNeedsTypeset && created.length) {
+      math.typeset(created, function () {
+        exec.refreshSpeakerWindow();
+      });
+    }
   }
 
   function autoRunEnabled() {
@@ -905,8 +927,10 @@ define([
   /* ---- Activation ------------------------------------------------------------ */
 
   function load() {
-    // Warm the markdown renderer so the first slideshow doesn't race it.
+    // Warm the markdown renderer and MathJax so the first slideshow doesn't
+    // race either of them.
     util.loadMarked(function () {});
+    math.init();
     installSlideshowHook();
     refreshAll();
   }

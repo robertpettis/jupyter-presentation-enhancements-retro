@@ -60,9 +60,33 @@ speaker window.
 
 Output is rendered through classic Notebook's own `OutputArea`, so text,
 HTML, tables and matplotlib plots all come through — plots arrive as `data:`
-URIs and survive the copy into the popup. Two things do not: MathJax (the
-popup loads none, so LaTeX shows as source) and syntax colouring (the popup
-gets raw `innerHTML` and none of our stylesheets, so code is plain monospace).
+URIs and survive the copy into the popup. Syntax colouring does not: the popup
+gets raw `innerHTML` and none of our stylesheets, so code is plain monospace.
+
+### LaTeX in notes
+
+Maths in a markdown note renders properly in the speaker window. Two things
+had to be handled:
+
+- **Markdown was corrupting the LaTeX.** Run `$P(Y_1|X_i)$` through marked and
+  the underscores become emphasis. Notes now go through the same
+  `remove_math` / `replace_math` pipeline nbclassic uses for its own markdown
+  cells, so maths is lifted out before marked and put back after.
+- **The popup has no MathJax.** It receives raw `innerHTML` and loads none of
+  our scripts or stylesheets, so the markup has to arrive self-contained.
+  Notes are therefore typeset with MathJax's **SVG** output and
+  `useFontCache: false`. That second setting is the crux: SVG output normally
+  emits `<use xlink:href="#MJMATHI-78">` pointing at a glyph `<defs>` block in
+  the *notebook* document, and every one of those references would dangle
+  once copied into the popup — the maths would render blank. Disabling the
+  cache inlines each glyph as a `<path>`.
+
+The renderer switch is global (MathJax is a singleton), so it is put back
+immediately afterwards and the notebook's own maths is unaffected. MathJax
+cannot measure inside `display: none`, so each hidden aside is briefly given
+layout at `left: -10000px` while it is typeset — never visible on the
+audience screen. If MathJax is missing or anything throws, the note keeps its
+raw `$...$`, which is at least readable.
 
 **Three things to know before you rely on this:**
 
