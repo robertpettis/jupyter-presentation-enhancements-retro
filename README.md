@@ -170,6 +170,33 @@ window, where CSS cannot reach because the popup only receives raw `innerHTML`.
 Adding another target is one entry in `TARGETS` in `slidechrome.js` plus the
 matching rule in `main.css`; the Slides+ checkbox is generated from it.
 
+### Getting rid of the selected-cell box
+
+Classic Notebook always keeps exactly one cell selected — there is no "select
+nothing" state — and paints it with a grey border and a blue bar down its left
+edge. On a slide that box just sits there, in front of the room, with nothing
+you can click to make it go away.
+
+Two things fix that:
+
+- ***Slides+ ▸ Hide Selected-Cell Outline During Slideshow*** (on by default)
+  suppresses the outline for the duration of the slideshow, the same
+  self-reverting `.reveal`-scoped CSS the cell-title toggle uses. Turn it off
+  if you run cells live and want to see which one you are about to run.
+- **Clicking anywhere off a cell hides the outline**, in the notebook and on a
+  slide alike — click the slide background, the margin, the space below the
+  last cell. It comes back the moment you click into a cell, and (outside a
+  slideshow) on any key press or programmatic selection change, so you are
+  never left navigating blind. Inside a slideshow, keys are slide navigation
+  rather than cell navigation, so they deliberately leave it hidden.
+
+Neither one touches the notebook's own selection. Nothing calls
+`Cell.unselect`, no `selected` flag is flipped, and no class the notebook
+manages is removed — `Notebook.get_selected_index` reads those flags and every
+command-mode action assumes it finds a cell, so faking a real deselection
+would break Shift-Enter and half the keyboard. This is purely a matter of not
+*painting* the selection, and it lives in `selection.js`.
+
 ## Development note: never name a file `notes.js`
 
 The notes module lives in `speaker.js`, and must not be renamed to anything

@@ -32,6 +32,13 @@ define(['./util'], function (util) {
       bodyClass: 'pre-hide-cell-titles',
       fallback: true,
       owner: 'jupyter-cell-enhancements-retro (.cee-title-header)'
+    },
+    {
+      key: 'hideCellSelection',
+      label: 'Hide Selected-Cell Outline During Slideshow',
+      bodyClass: 'pre-hide-cell-selection',
+      fallback: true,
+      owner: 'classic Notebook (div.cell.selected)'
     }
   ];
 

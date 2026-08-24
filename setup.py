@@ -21,7 +21,7 @@ with open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="jupyter-presentation-enhancements-retro",
-    version="0.2.2",
+    version="0.2.3",
     description=(
         "Speaker notes in cell metadata (and other RISE presentation "
         "enhancements) for classic Jupyter Notebook 6 (legacy RISE "

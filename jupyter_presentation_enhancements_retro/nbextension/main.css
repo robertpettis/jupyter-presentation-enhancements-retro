@@ -248,6 +248,49 @@ body.pre-hide-cell-titles .reveal .cee-title-header {
   display: none !important;
 }
 
+/* ---- Selected-cell outline -------------------------------------------------
+ * nbclassic paints the selected cell with a grey border and a 5px bar down the
+ * left (`div.cell.selected` plus its `:before`, blue in command mode, green in
+ * edit mode; `.edit_mode` and `.command_mode` live on <body>). Exactly one cell
+ * is always selected, so on a slide that outline is simply there, in front of
+ * the audience, with no way to dismiss it.
+ *
+ * These rules suppress the painting and nothing else — the notebook's own
+ * selection is untouched, so every keyboard action still works on the same
+ * cell it always would. Two independent gates:
+ *
+ *   .pre-no-selection        selection.js sets it when a click lands off any
+ *                            cell, clears it on the next click into one.
+ *   .pre-hide-cell-selection slidechrome.js target, scoped under `.reveal` so
+ *                            it covers the whole slideshow and reverts on exit.
+ */
+body.pre-no-selection div.cell.selected,
+body.pre-no-selection div.cell.selected.jupyter-soft-selected,
+body.pre-no-selection.edit_mode div.cell.selected,
+body.pre-hide-cell-selection .reveal div.cell.selected,
+body.pre-hide-cell-selection .reveal div.cell.selected.jupyter-soft-selected,
+body.pre-hide-cell-selection.edit_mode .reveal div.cell.selected {
+  border-color: transparent !important;
+}
+
+body.pre-no-selection div.cell.selected:before,
+body.pre-no-selection div.cell.selected.jupyter-soft-selected:before,
+body.pre-no-selection.edit_mode div.cell.selected:before,
+body.pre-hide-cell-selection .reveal div.cell.selected:before,
+body.pre-hide-cell-selection .reveal div.cell.selected.jupyter-soft-selected:before,
+body.pre-hide-cell-selection.edit_mode .reveal div.cell.selected:before {
+  display: none !important;
+}
+
+/* Multi-cell (shift-click) selection tints the whole cell; same treatment.
+ * Its 5px padding-left is left alone so nothing reflows as the tint goes. */
+body.pre-no-selection div.cell.jupyter-soft-selected,
+body.pre-hide-cell-selection .reveal div.cell.jupyter-soft-selected {
+  background: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
 /* ---- Menu ------------------------------------------------------------------ */
 
 .pre-menu-check {

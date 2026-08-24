@@ -12,6 +12,8 @@
  *           its popup by grabbing the first `script[src*="notes.js"]` in the
  *           document, and ours would load first and hijack it. See the header
  *           of speaker.js.
+ *   selection — a click off any cell hides the selected-cell outline, which
+ *           classic Notebook otherwise leaves on screen permanently.
  */
 define([
   'require',
@@ -20,8 +22,9 @@ define([
   'base/js/events',
   './util',
   './speaker',
-  './slidechrome'
-], function (require, $, Jupyter, events, util, notes, slideChrome) {
+  './slidechrome',
+  './selection'
+], function (require, $, Jupyter, events, util, notes, slideChrome, selection) {
   'use strict';
 
   function loadCss() {
@@ -191,6 +194,7 @@ define([
   function init() {
     loadCss();
     slideChrome.load();
+    selection.load();
     notes.load();
     addToolbarButtons();
     addMenu();
